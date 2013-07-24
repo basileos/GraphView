@@ -7,6 +7,7 @@ import java.util.List;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.DashPathEffect;
 import android.graphics.Paint;
 import android.graphics.Paint.Align;
 import android.graphics.RectF;
@@ -61,8 +62,9 @@ abstract public class GraphView extends LinearLayout {
 
 			float border = GraphViewConfig.BORDER;
 			float horstart = 0;
-			float height = getHeight();
-			float width = getWidth() - 1;
+            float fullHeight = getHeight();
+            float height = fullHeight * mainChartHeightPortion;
+            float width = getWidth() - 1;
 			double maxY = getMaxY();
 			double minY = getMinY();
 			double maxX = getMaxX(false);
@@ -81,25 +83,36 @@ abstract public class GraphView extends LinearLayout {
 			// vertical lines
 			paint.setTextAlign(Align.LEFT);
 			int vers = verlabels.length - 1;
+            horizontalLinesPaint.setStyle(Paint.Style.STROKE);
+            horizontalLinesPaint.setPathEffect(new DashPathEffect(new float[] {2,2}, 0));
+            horizontalLinesPaint.setColor(graphViewStyle.getGridColor());
+            paint.setColor(graphViewStyle.getGridColor());
+
+            //horizontal lines
 			for (int i = 0; i < verlabels.length; i++) {
-				paint.setColor(graphViewStyle.getGridColor());
 				float y = ((graphheight / vers) * i) + border;
-				canvas.drawLine(horstart, y, width, y, paint);
+                canvas.drawLine(horstart, y, width, y, i == verlabels.length - 1 ? paint : horizontalLinesPaint);
 			}
 
-			// horizontal labels + lines
+            //single bottom line
+            if (mainChartHeightPortion < 1) {
+                canvas.drawLine(horstart, fullHeight - border, width, fullHeight - border, paint);
+            }
+
+            // axe X labels +  vertical lines
 			int hors = horlabels.length - 1;
 			for (int i = 0; i < horlabels.length; i++) {
 				paint.setColor(graphViewStyle.getGridColor());
 				float x = ((graphwidth / hors) * i) + horstart;
-				canvas.drawLine(x, height - border, x, border, paint);
+                canvas.drawLine(x, fullHeight - border, x, border, paint);
 				paint.setTextAlign(Align.CENTER);
 				if (i==horlabels.length-1)
 					paint.setTextAlign(Align.RIGHT);
 				if (i==0)
 					paint.setTextAlign(Align.LEFT);
 				paint.setColor(graphViewStyle.getHorizontalLabelsColor());
-				canvas.drawText(horlabels[i], x, height - 4, paint);
+                //axe X labels
+                canvas.drawText(horlabels[i], x, fullHeight - 4, paint);
 			}
 
 			paint.setTextAlign(Align.CENTER);
@@ -241,28 +254,32 @@ abstract public class GraphView extends LinearLayout {
 	}
 
 	protected final Paint paint;
+    protected final Paint horizontalLinesPaint;
 	private String[] horlabels;
 	private String[] verlabels;
 	private String title;
 	private boolean scrollable;
 	private boolean disableTouch;
-	private double viewportStart;
-	private double viewportSize;
+	protected double viewportStart;
+	protected double viewportSize;
 	private final View viewVerLabels;
 	private ScaleGestureDetector scaleDetector;
 	private boolean scalable;
 	private final NumberFormat[] numberformatter = new NumberFormat[2];
-	private final List<GraphViewSeries> graphSeries;
+	protected final List<GraphViewSeries> graphSeries;
 	private boolean showLegend = false;
 	private float legendWidth = 120;
 	private LegendAlign legendAlign = LegendAlign.MIDDLE;
-	private boolean manualYAxis;
-	private double manualMaxYValue;
-	private double manualMinYValue;
+	protected boolean manualYAxis;
+	protected double manualMaxYValue;
+	protected double manualMinYValue;
 	private GraphViewStyle graphViewStyle;
 	private final GraphViewContentView graphViewContentView;
+    protected double chartWidthRatio = 0; // in some cases we need to draw chart only on the part of the background, e.g. we have all labels for axe X, but chart data is available only for part of the period
+    protected float mainChartHeightPortion = 1f;//it should be less whean 1, if we need to draw two diferent charts  - one above another, like CombinedGraphView
 
-	public GraphView(Context context, AttributeSet attrs) {
+
+    public GraphView(Context context, AttributeSet attrs) {
 		this(context, attrs.getAttributeValue(null, "title"));
 
 		int width = attrs.getAttributeIntValue("android", "layout_width", LayoutParams.MATCH_PARENT);
@@ -287,6 +304,7 @@ abstract public class GraphView extends LinearLayout {
 		graphViewStyle = new GraphViewStyle();
 
 		paint = new Paint();
+        horizontalLinesPaint = new Paint();
 		graphSeries = new ArrayList<GraphViewSeries>();
 
 		viewVerLabels = new VerLabelsView(context);
@@ -307,7 +325,7 @@ abstract public class GraphView extends LinearLayout {
       this.title = title;
     }
 
-	private GraphViewData[] _values(int idxSeries) {
+	protected GraphViewData[] _values(int idxSeries) {
 		GraphViewData[] values = graphSeries.get(idxSeries).values;
 		if (viewportStart == 0 && viewportSize == 0) {
 			// all data

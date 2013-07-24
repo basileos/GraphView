@@ -1,12 +1,9 @@
 package com.jjoe64.graphview;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import android.annotation.TargetApi;
-
 import com.jjoe64.graphview.GraphView.GraphViewData;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class GraphViewSeries {
 	/**
@@ -16,6 +13,7 @@ public class GraphViewSeries {
 		public int color = 0xff0077cc;
 		public int thickness = 3;
 		private ValueDependentColor valueDependentColor;
+        private ChartStyle chartStyle = ChartStyle.LINE;
 
 		public GraphViewSeriesStyle() {
 			super();
@@ -31,7 +29,17 @@ public class GraphViewSeries {
 		public ValueDependentColor getValueDependentColor() {
 			return valueDependentColor;
 		}
+
+        public ChartStyle getChartStyle() {
+            return chartStyle;
+        }
+
+        public void setChartStyle(ChartStyle chartStyle) {
+            this.chartStyle = chartStyle;
+        }
 	}
+
+    public enum ChartStyle { LINE, BAR}
 
 	final String description;
 	final GraphViewSeriesStyle style;
